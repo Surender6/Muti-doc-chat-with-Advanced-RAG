@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -205,3 +206,52 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+=======
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+*.pyc
+*.pyo
+
+# Virtual environments
+.venv
+.env
+.venv/
+venv/
+env/
+.env/
+
+# UV package manager
+.uv/
+uv.lock
+
+# Environment variables
+.env.*
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Local data
+data/
+datasets/
+tmp/
+cache/
+
+# FAISS & vectorstore artifacts
+*.faiss
+*.idx
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# FastAPI static caches
+staticfiles/
+>>>>>>> 4b66c78 (project structure, logger and exception files are added)
