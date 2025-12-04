@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 from typing import Iterable, List
-from langchain.schema import Document
+from langchain_core.documents import Document
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, TextLoader
 from multi_doc_chat.logger import GLOBAL_LOGGER as log
 from multi_doc_chat.exception.custom_exception import DocumentPortalException
@@ -25,11 +25,11 @@ def load_documents(paths: Iterable[Path]) -> List[Document]:
             else:
                 log.warning("Unsupported extension skipped", path=str(p))
                 continue
-            docs.extend(loader.load)
+            docs.extend(loader.load())
         log.info("Dcouments loaded",count=len(docs))
         return docs
     except Exception as e:
-        log.error("failed loading documents",str(e))
+        log.error("failed loading documents",error=str(e))
         raise DocumentPortalException("Error loading documents", e) from e
     
     

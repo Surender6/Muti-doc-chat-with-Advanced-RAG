@@ -12,7 +12,7 @@ load_dotenv()
 def test_document_ingestion_and_rag():
     try:
         test_files = [
-            
+            "C:\\Users\\gudas\\Pictures\\attention-is-all-you-need-Paper.pdf"
         ]
         
         uploaded_files=[]

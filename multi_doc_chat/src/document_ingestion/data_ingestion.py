@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 from typing import Iterable,List,Optional,Dict,Any
-from langchain.schema import document
+from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from multi_doc_chat.utils.model_loader import ModelLoader
@@ -16,9 +16,8 @@ import hashlib
 import sys
 
 def generate_session_id() -> str:
-    """ generate a unique session id with  timestamp."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    unique_id =uuid.uuid4().hex[:8]
+    unique_id = uuid.uuid4().hex[:8]
     return f"session_{timestamp}_{unique_id}"
 
 class ChatIngestor:
@@ -33,7 +32,7 @@ class ChatIngestor:
             self.model_loader = ModelLoader()
             
             self.use_session = use_session_dirs
-            self.session_id = session_id #or generate_session_id()
+            self.session_id = session_id or generate_session_id()
             
             self.temp_base = Path(temp_base); self.temp_base.mkdir(parents=True, exist_ok=True)
             self.faiss_base = Path(faiss_base);self.faiss_base.mkdir(parents=True,exist_ok=True)
@@ -58,7 +57,7 @@ class ChatIngestor:
             return d
         return base # fallback : "faiss_index/"
     
-    def _split(self, docs: List[document],chunk_size=1000,chunk_overlap=200) -> List[document]:
+    def _split(self, docs: List[Document],chunk_size=1000,chunk_overlap=200) -> List[Document]:
         splitter =RecursiveCharacterTextSplitter(chunk_size=chunk_size,chunk_overlap=chunk_overlap)
         chunks=splitter.split_documents(docs)
         log.info("Documents split",chunks=len(chunks),chunk_size=chunk_size,overlap=chunk_overlap)
@@ -142,12 +141,12 @@ class FaissManager:
         self.meta_path.write_text(json.dumps(self._meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-    def add_documents(self,docs: List[document]):
+    def add_documents(self,docs: List[Document]):
 
         if self.vs is None:
             raise RuntimeError("Call load_or_create() before add_documents_idempotent().")
 
-        new_docs: List[document] = []
+        new_docs: List[Document] = []
 
         for d in docs:
 

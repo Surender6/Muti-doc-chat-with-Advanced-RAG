@@ -1,12 +1,14 @@
 import os
 import sys
 import json
+import yaml
 from dotenv import load_dotenv
 from multi_doc_chat.utils.config_loader import load_config
-from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
+#from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from multi_doc_chat.logger import GLOBAL_LOGGER as log
 from multi_doc_chat.exception.custom_exception import DocumentPortalException
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
 class ApiKeyManager:
     REQUIRED_KEYS = ["GROQ_API_KEY"]
@@ -59,34 +61,38 @@ class ModelLoader:
     loads embeddings models and llms based on config and environment
     """    
     
-    def __int__(self):
-        if os.getenv("ENV","local").lower() != "production":
-            load_dotenv()
-            log.info("Running in Local mode:.env loaded")
-        else:
-            log.info("Runnning in production mode")
+    def __int__(self,config_path: str = "config.yaml"):
+        try:
+            if os.getenv("ENV","local").lower() != "production":
+                load_dotenv()
+                log.info("Running in Local mode:.env loaded")
+            else:
+                log.info("Runnning in production mode")
+                
+            self.config = yaml.safe_load(open(config_path, "r"))
+            self.api_key_mgr = ApiKeyManager()
             
-        
-        self.api_key_mgr = ApiKeyManager()
-        self.config = load_config()
-        log.info("YAML Config loaded", config_keys=list(self.config.keys()))
+            log.info("ModelLoader initialized", config_loaded=True)
+        except Exception as e:
+            log.error("Failed to initialize ModelLoader", error=str(e))
+            raise DocumentPortalException("ModelLoader initialization failed", sys)
         
     def load_embeddings(self):
         """
        Load and return embedding model (HuggingFace or your chosen embedding model).
        Using GROQ only for LLM, so embeddings come from HF.
        """
-       try:
-        model_name = self.config["embedding_model"]["model_name"]
-        log.info("Loading embedding model", model=model_name)
+        try:
+            model_name = self.config["embedding_model"]["model_name"]
+            log.info("Loading embedding model", model=model_name)
 
-        # Use HF embeddings (common & compatible with FAISS + RAG)
-        return HuggingFaceEmbeddings(model_name=model_name)
+            # Use HF embeddings (common & compatible with FAISS + RAG)
+            return HuggingFaceEmbeddings(model_name=model_name)
 
-    except Exception as e:
-        log.error("Error loading embedding model", error=str(e))
-        raise DocumentPortalException("Failed to load embedding model", sys)
-           
+        except Exception as e:
+            log.error("Error loading embedding model", error=str(e))
+            raise DocumentPortalException("Failed to load embedding model", sys)
+            
            
     def load_llm(self):
         """
@@ -98,6 +104,7 @@ class ModelLoader:
            provider = llm_config.get("provider")
            model_name= llm_config.get("model_name")
            temperature = llm_config.get("temperature",0.2)
+           max_tokens = llm_config.get("max_output_tokens", 2048)
            
            log.info("Loading LLM", provider=provider, model=model_name)
            
