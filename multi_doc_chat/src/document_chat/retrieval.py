@@ -21,95 +21,41 @@ class ConversationalRAG:
     LCEL-based Conversational RAG with lazy retriever initialization.
 
     Usage:
-        rag = ConversationalRAG(session_id="abc")
+        rag = ConversationalRAG(session_id="abc", model_loader=loader)
         rag.load_retriever_from_faiss(index_path="faiss_index/abc", k=5, index_name="index")
         answer = rag.invoke("What is ...?", chat_history=[])
     """
     
-    def __init__(self,session_id: Optional[str],retriever=None):
+    def __init__(self, session_id: Optional[str], model_loader, retriever=None):
         try:
             self.session_id = session_id
-            
-            ## Load llm and prompts once
-            
-            self.llm = self.load_llm()
+            self.model_loader = model_loader
+
+            # Load LLM ONE TIME using ModelLoader
+            self.llm = self.model_loader.load_llm()
+
+            # Load prompts
             self.contextuallize_prompt: ChatPromptTemplate = PROMPT_REGISTRY[
                 PromptType.CONTEXTUALIZE_QUESTION.value
             ]
             self.qa_prompt: ChatPromptTemplate = PROMPT_REGISTRY[
                 PromptType.CONTEXT_QA.value
             ]
-            
-            # LAZY PIECES
-            self.retriever= retriever
+
+            # Lazy components
+            self.retriever = retriever
             self.chain = None
+
+            # If retriever exists, build chain automatically
             if self.retriever is not None:
                 self._build_lcel_chain()
-                
-            log.info("ConversationalRAG initialized",session_id=self.session_id)
-        except Exception as e:
-            log.error("Failed to  initialize Conversational RAG",error=str(e))
-            raise DocumentPortalException("Initialization error in ConversationalRAG", sys)
-        
-    def load_retriever_from_faiss(
-        self,
-        index_path: str,
-        k: int = 5,
-        index_name: str = "index",
-        search_type: str = "mmr",
-        fetch_k: int = 20,
-        lambda_mult: float = 0.5,
-        search_kwargs: Optional[Dict[str, Any]] = None,
-    ):
-       """
-        Load FAISS vectorstore from disk and build retriever + LCEL chain.
-        
-         Args:
-            index_path: Path to FAISS index directory
-            k: Number of documents to return
-            index_name: Name of the index file
-            search_type: Type of search ("similarity", "mmr", "similarity_score_threshold")
-            fetch_k: Number of documents to fetch before MMR re-ranking (only for MMR)
-            lambda_mult: Diversity parameter for MMR (0=max diversity, 1=max relevance)
-            search_kwargs: Custom search kwargs (overrides other parameters if provided)
-        """
-       try:
-            if not os.path.isdir(index_path):
-                raise FileNotFoundError(f"FAISS index directory not found:{index_path}")
-            
-            embeddings = ModelLoader().load_embeddings()
-            vectorstore = FAISS.load_local(
-                index_path,
-                embeddings,
-                index_name=index_name,
-                allow_dangerous_deserialization=True,  # ok if you trust the index
-            )
-            
-            if search_kwargs is None:
-                search_kwargs = {"k": k}
-                if search_type == "mmr":
-                    search_kwargs["fetch_k"] = fetch_k
-                    search_kwargs["lambda_mult"] = lambda_mult
 
-            self.retriever = vectorstore.as_retriever(
-                search_type=search_type, search_kwargs=search_kwargs
-            )
-            self._build_lcel_chain()
-            
-            log.info(
-                "FAISS retriever loaded successfully",
-                index_path=index_path,
-                index_name=index_name,
-                search_type=search_type,
-                k=k,
-                fetch_k=fetch_k if search_type == "mmr" else None,
-                lambda_mult=lambda_mult if search_type == "mmr" else None,
-                session_id=self.session_id,
-            )
-            return self.retriever
-       except Exception as e:
-            log.error("Failed to load retriever from FAISS", error=str(e))
-            raise DocumentPortalException("Loading error in ConversationalRAG", sys)
+            log.info("ConversationalRAG initialized", session_id=self.session_id)
+
+        except Exception as e:
+            log.error("Failed to initialize Conversational RAG", error=str(e))
+            raise DocumentPortalException("Initialization error in ConversationalRAG", sys)
+
         
     def invoke(self, user_input: str, chat_history: Optional[List[BaseMessage]] = None) -> str:
         """Invoke the LCEL pipeline."""
@@ -199,7 +145,62 @@ class ConversationalRAG:
             raise DocumentPortalException("Failed to build LCEL chain", sys)
                           
 
+    def load_retriever_from_faiss(
+        self,
+        index_path: str,
+        k: int = 5,
+        index_name: str = "index",
+        search_type: str = "similarity",
+        fetch_k: int = 20,
+        lambda_mult: float = 0.5
+    ):
+        """
+        Load FAISS index from disk, build retriever, and rebuild LCEL chain.
+        Supports MMR and similarity search.
+        """
+        try:
+            embeddings = self.model_loader.load_embeddings()
 
+            # Load FAISS vector store
+            vs = FAISS.load_local(
+                index_path,
+                embeddings,
+                index_name=index_name,
+                allow_dangerous_deserialization=True
+            )
+
+            # Configure retriever
+            if search_type == "mmr":
+                self.retriever = vs.as_retriever(
+                    search_type="mmr",
+                    search_kwargs={
+                        "k": k,
+                        "fetch_k": fetch_k,
+                        "lambda_mult": lambda_mult,
+                    }
+                )
+                log.info(
+                    "using mmr search",
+                    k=k, fetch_k=fetch_k, lambda_mult=lambda_mult
+                )
+            else:
+                self.retriever = vs.as_retriever(search_kwargs={"k": k})
+
+            # Rebuild LCEL chain with updated retriever
+            self._build_lcel_chain()
+
+            log.info(
+                "FAISS retriever loaded successfully",
+                index=index_path,
+                k=k,
+                search_type=search_type,
+                session_id=self.session_id
+            )
+
+        except Exception as e:
+            log.error("Failed to load retriever from FAISS", error=str(e))
+            raise DocumentPortalException("Failed to load retriever from FAISS", sys)
+    
 
     
             

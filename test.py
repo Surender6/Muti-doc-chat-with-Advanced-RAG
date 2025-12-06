@@ -5,6 +5,7 @@ from pathlib import Path
 from multi_doc_chat.src.document_ingestion.data_ingestion import ChatIngestor
 from multi_doc_chat.src.document_chat.retrieval import ConversationalRAG
 from langchain_core.messages import HumanMessage, AIMessage
+from multi_doc_chat.utils.model_loader import ModelLoader
 
 
 load_dotenv()
@@ -55,9 +56,10 @@ def test_document_ingestion_and_rag():
             
         session_id = ci.session_id
         index_dir = os.path.join("faiss_index",session_id)
+        loader = ModelLoader() 
         
         #Load RAG with MMR search
-        rag = ConversationalRAG(session_id=session_id)
+        rag = ConversationalRAG(session_id=session_id,model_loader=loader,retriever=retriever)
         rag.load_retriever_from_faiss(
             index_path=index_dir,
             k=5, 

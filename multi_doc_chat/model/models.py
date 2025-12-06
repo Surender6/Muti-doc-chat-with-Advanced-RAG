@@ -23,4 +23,5 @@ class ChatRequest(BaseModel):
     
 class ChatResponse(BaseModel):
     """the response that returned."""
-    answer : str 
+    answer : str
+     

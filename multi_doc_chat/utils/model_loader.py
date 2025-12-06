@@ -3,6 +3,7 @@ import sys
 import json
 import yaml
 from dotenv import load_dotenv
+from pathlib import Path
 from multi_doc_chat.utils.config_loader import load_config
 #from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
@@ -57,24 +58,24 @@ class ApiKeyManager:
         
          
 class ModelLoader:
-    """
-    loads embeddings models and llms based on config and environment
-    """    
-    
-    def __int__(self,config_path: str = "config.yaml"):
+    def __init__(self, config_path: str = None):
         try:
-            if os.getenv("ENV","local").lower() != "production":
-                load_dotenv()
-                log.info("Running in Local mode:.env loaded")
-            else:
-                log.info("Runnning in production mode")
-                
-            self.config = yaml.safe_load(open(config_path, "r"))
+            # Auto-locate config.yaml inside multi_doc_chat/config/
+            if config_path is None:
+                base_dir = Path(__file__).resolve().parents[1]   # multi_doc_chat folder
+                config_path = base_dir / "config" / "config.yaml"
+
+            # Load YAML config
+            with open(config_path, "r") as f:
+                self.config = yaml.safe_load(f)
+
+            # Initialize API key manager
             self.api_key_mgr = ApiKeyManager()
-            
-            log.info("ModelLoader initialized", config_loaded=True)
+
+            log.info("ModelLoader initialized", config_path=str(config_path))
+
         except Exception as e:
-            log.error("Failed to initialize ModelLoader", error=str(e))
+            log.error("ModelLoader initialization failed", error=str(e))
             raise DocumentPortalException("ModelLoader initialization failed", sys)
         
     def load_embeddings(self):
