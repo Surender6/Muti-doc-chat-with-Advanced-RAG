@@ -59,40 +59,59 @@ class ConversationalRAG:
         
     def invoke(self, user_input: str, chat_history: Optional[List[BaseMessage]] = None) -> str:
         """Invoke the LCEL pipeline."""
-        
+    
         try:
             if self.chain is None:
                 raise DocumentPortalException(
                     "RAG chain not initialized. Call load_retriever_from_faiss() before invoke().", sys
                 )
+
             chat_history = chat_history or []
             payload = {"input": user_input, "chat_history": chat_history}
+
             answer = self.chain.invoke(payload)
+
+            # ------------------------------
+            # FALLBACK: No context → answer normally
+            # ------------------------------
+            if answer is None or str(answer).strip().lower() in [
+                "i don't know", "i don't know.", "i dont know", "i dont know."
+            ]:
+                fallback = self.llm.invoke(
+                    f"Respond conversationally to the user: {user_input}"
+                )
+                answer = fallback.content
+            # ------------------------------
+
+            # No answer case
             if not answer:
                 log.warning(
                     "No answer generated", user_input=user_input, session_id=self.session_id
                 )
                 return "no answer generated."
-            
-            #Validate answer type and length using Pydantic model
-            
+
+            # Validate answer using Pydantic
             try:
                 validated = ChatAnswer(answer=str(answer))
                 answer = validated.answer
             except ValidationError as ve:
                 log.error("Invalid chat answer", error=str(ve))
                 raise DocumentPortalException("Invalid chat answer", sys)
-            
+
+            # Success log
             log.info(
                 "Chain invoked successfully",
                 session_id=self.session_id,
                 user_input=user_input,
                 answer_preview=str(answer)[:150],
             )
+
             return answer
+
         except Exception as e:
             log.error("Failed to invoke ConversationalRAG", error=str(e))
             raise DocumentPortalException("Invocation error in ConversationalRAG", sys)
+
         
         # ---------- Internals ----------
         
@@ -108,8 +127,12 @@ class ConversationalRAG:
             raise DocumentPortalException("LLM loading error in ConversationalRAG", sys)
         
     @staticmethod
-    def _format_docs(docs) -> str:
+    def _format_docs(docs):
+        """Return None when no documents are retrieved (enables fallback)."""
+        if not docs:
+            return None
         return "\n\n".join(getattr(d, "page_content", str(d)) for d in docs)
+
     
     def _build_lcel_chain(self):
         try:
