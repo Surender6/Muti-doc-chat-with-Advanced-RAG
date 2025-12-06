@@ -255,3 +255,11 @@ Thumbs.db
 # FastAPI static caches
 staticfiles/
 >>>>>>> 4b66c78 (project structure, logger and exception files are added)
+
+# Ignore FAISS indexes and vectorstore artifacts
+# Ignore FAISS indexes and vectorstore artifacts
+faiss_index/
+**/index.faiss
+**/index.pkl
+**/ingested_meta
+
