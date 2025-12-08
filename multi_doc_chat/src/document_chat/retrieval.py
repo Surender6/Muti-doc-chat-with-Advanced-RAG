@@ -173,7 +173,7 @@ class ConversationalRAG:
         index_path: str,
         k: int = 5,
         index_name: str = "index",
-        search_type: str = "similarity",
+        search_type: str = "mmr",
         fetch_k: int = 20,
         lambda_mult: float = 0.5
     ):
@@ -217,8 +217,12 @@ class ConversationalRAG:
                 index=index_path,
                 k=k,
                 search_type=search_type,
-                session_id=self.session_id
+                session_id=self.session_id,
+                fetch_k= fetch_k if search_type == "mmr" else None,
+                lambda_mult = lambda_mult if search_type == "mmr" else None,
+                    
             )
+            return self.retriever
 
         except Exception as e:
             log.error("Failed to load retriever from FAISS", error=str(e))
