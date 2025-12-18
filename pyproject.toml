@@ -16,6 +16,7 @@ dependencies = [
     "langchain-text-splitters>=1.0.0",
     "pandas>=2.3.3",
     "pypdf>=6.4.0",
+    "pytest>=9.0.2",
     "python-dotenv>=1.2.1",
     "sentence-transformers>=5.1.2",
     "structlog>=25.5.0",
