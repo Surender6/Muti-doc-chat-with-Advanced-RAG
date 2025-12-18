@@ -16,6 +16,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from multi_doc_chat.exception.custom_exception import DocumentPortalException
 from multi_doc_chat.model.models import UploadResponse, ChatRequest,ChatResponse
 from multi_doc_chat.utils.document_ops import FastAPIFileAdapter
+from multi_doc_chat.utils.model_loader import ModelLoader
 
 
 ## fastapi initialization
@@ -111,9 +112,10 @@ async def chat(req: ChatRequest) -> ChatResponse:
         print("📌 Session ID:", session_id)
 
         # build RAG and load retriever from persisted FAISS with MMR
-        rag = ConversationalRAG(session_id=session_id)
+        model_loader = ModelLoader()
+        rag = ConversationalRAG(session_id=session_id,model_loader=model_loader)
 
-        index_path = f"faiss_index"/{session_id}
+        index_path = Path("faiss_index") / session_id
 
         rag.load_retriever_from_faiss(
             index_path=index_path,
