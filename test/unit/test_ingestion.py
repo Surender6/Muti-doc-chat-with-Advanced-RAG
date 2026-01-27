@@ -37,11 +37,13 @@ def test_chat_failure_returns_500(client, clear_sessions, monkeypatch):
     import main
 
     class BoomRAG:
-        def __init__(self, session_id=None):
+        def __init__(self, session_id=None, model_loader=None, **kwargs):
             pass
+
         def load_retriever_from_faiss(self, *a, **k):
             from multi_doc_chat.exception.custom_exception import DocumentPortalException
             raise DocumentPortalException("fail load", None)
+
 
     monkeypatch.setattr(main, "ConversationalRAG", BoomRAG)
     resp = client.post("/chat", json={"session_id": sid, "message": "hi"})
